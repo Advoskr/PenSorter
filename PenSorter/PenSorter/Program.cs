@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using PenSorter.BL;
+using PenSorter.Core;
 using PenSorter.Generator;
 
 namespace PenSorter
@@ -12,14 +13,19 @@ namespace PenSorter
     class Program
     {
         private static FileGenerator _generator= new FileGenerator();
-
+        private static ILogger _logger;
         static void Main(string[] args)
         {
+#if DEBUG
+            _logger = new CompositeLogger(new List<ILogger>(){new DebugLogger(), new ConsoleLogger()});
+#else
+            _logger = new CompositeLogger(new List<ILogger>(){new NLogger(), new ConsoleLogger()});
+#endif
             var helpText = "Write action to exec. Possible actions: \r\n" +
                          "gen - generate new file with pens data; \r\n" +
                          "sort - sort last file (by date modified) \r\n" +
                          "exit - exit app";
-            Console.WriteLine(helpText);
+            _logger.Info(helpText);
             var needExit = false;
             do
             {
@@ -28,12 +34,12 @@ namespace PenSorter
                 switch (action?.ToLowerInvariant())
                 {
                     case "gen":
-                        Console.WriteLine("Write down number if files to generate");
+                        _logger.Info("Write down number if files to generate");
                         var readLine = Console.ReadLine();
                         var isParsed = int.TryParse(readLine, out var filesCount);
                         if (!isParsed)
                         {
-                            Console.WriteLine($"Expected number of files but got:{readLine}");
+                            _logger.Info($"Expected number of files but got:{readLine}");
                             break;
                         }
                         GenerateData(filesCount);
@@ -42,16 +48,16 @@ namespace PenSorter
                         SortData();
                         break;
                     case "help":
-                        Console.WriteLine(helpText);
+                        _logger.Info(helpText);
                         break;
                     case "exit":
                         needExit = true;
                         break;
                     default:
-                        Console.WriteLine("Unknown command. For list of commands write down 'help'.To quit write 'exit'");
+                        _logger.Info("Unknown command. For list of commands write down 'help'.To quit write 'exit'");
                         break;
                 }
-                Console.WriteLine("Command executed. Waiting for new command");
+                _logger.Info("Command executed. Waiting for new command");
             } while ((!needExit));
         }
 
@@ -63,38 +69,39 @@ namespace PenSorter
             {
                 var size = rnd.Next(1, 500);
                 var data = _generator.GenerateDataFile(size);
-                Console.WriteLine($"Generated file: {data}");
+                _logger.Info($"Generated file: {data}");
             }
         }
 
         private static void SortData()
         {
-            Console.WriteLine("Write down number of sorters");
+            _logger.Info("Write down number of sorters");
             var readLine = Console.ReadLine();
             var isParsed = int.TryParse(readLine, out var sortersCount);
             if (!isParsed)
             {
-                Console.WriteLine($"Expected number of sorters but got:{readLine}");
+                _logger.Info($"Expected number of sorters but got:{readLine}");
                 return;
             }
 
             var sw = Stopwatch.StartNew();
             var pallets = _generator.GetPallets();
-            Console.WriteLine($"Got pallets data in {sw.Elapsed.TotalMilliseconds}");
+            _logger.Info($"Got pallets data in {sw.Elapsed.TotalMilliseconds}ms");
             sw.Restart();
-            var sortingTable = new SortingTable(sortersCount);
+            var sortingTable = new SortingTable(sortersCount, 2000, _logger);
+            _logger.Info($"Found {pallets.Count} pallets");
+            _logger.Info($"Total pens: {pallets.Sum(t=>t.PensColorCodes.Count)}");
             sortingTable.Sort(pallets, 4).ContinueWith(t=>
             {
-                Console.WriteLine($"Formed {t.Result.Count} packs.");
-                Console.WriteLine($"Total cost of packs: {t.Result.Count*10} packs.");
+                _logger.Info($"Formed {t.Result.Count} packs.");
+                _logger.Info($"Total cost of packs: {t.Result.Count*10}$.");
                 return Task.CompletedTask;
             }).ContinueWith(t =>
             {
                 sw.Stop();
-                Console.WriteLine($"Sorted pallets data in {sw.Elapsed.TotalMilliseconds}");
+                _logger.Info($"Sorted pallets data in {sw.Elapsed.TotalMilliseconds}ms");
             }).Wait();
-            Console.WriteLine($"Found {pallets.Count} pallets");
-
+            _logger.Info($"Sorting ended");
         }
     }
 }

@@ -48,18 +48,4 @@ namespace PenSorter.BL
             return await Task.FromResult(result);
         }
     }
-
-    public class PenPallet
-    {
-        public List<int> PensColorCodes { get; set; }
-    }
-
-    public class PenPack
-    {
-        public int PenColor { get; set; }
-
-        public int PackSize { get; set; }
-
-        public int PackCost { get; set; }
-    }
 }
