@@ -185,3 +185,4 @@ FakesAssemblies/
 MonitoringServer/.nuget/NuGet.exe
 *.sqlite
 MonitoringServerCore/.vs/
+.vs/

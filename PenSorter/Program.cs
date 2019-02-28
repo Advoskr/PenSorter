@@ -14,6 +14,7 @@ namespace PenSorter
     {
         private static FileGenerator _generator= new FileGenerator();
         private static ILogger _logger;
+        private static CostCalculator _costCalculator= new CostCalculator();
         static void Main(string[] args)
         {
 #if DEBUG
@@ -94,7 +95,11 @@ namespace PenSorter
             sortingTable.Sort(pallets, 4).ContinueWith(t=>
             {
                 _logger.Info($"Formed {t.Result.Count} packs.");
-                _logger.Info($"Total cost of packs: {t.Result.Count*10}$.");
+                var costInUsd = t.Result.Count*10;
+                _logger.Info($"Total cost of packs: {costInUsd}$.");
+                var costInRubles = _costCalculator.CalculateCost(costInUsd, "USD", "RUB");
+                _logger.Info($"Converted cost of packs: {costInRubles:F2}Rub.");
+                
                 return Task.CompletedTask;
             }).ContinueWith(t =>
             {
