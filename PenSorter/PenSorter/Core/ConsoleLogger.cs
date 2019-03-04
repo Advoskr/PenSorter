@@ -107,14 +107,14 @@ namespace PenSorter.Core
             [System.Runtime.CompilerServices.CallerMemberName] string memberName = "")
         {
             return string.Format($"{memberName};{DateTime.Now} {LogLevel.Error}" +
-                                 $":{exception.GetFullExceptionMessage()} /r/n {exception.StackTrace}");
+                                 $":{exception.GetFullExceptionMessage()} {Environment.NewLine} {exception.StackTrace}");
         }
         private string FormFatalMessage<T>(Exception exception,
             [System.Runtime.CompilerServices.CallerMemberName] string memberName = "")
         {
             return string.Format($"{memberName};{DateTime.Now} {LogLevel.Fatal}" +
                                  $"({typeof(T).FullName})" +
-                                 $":{exception.GetFullExceptionMessage()} /r/n {exception.StackTrace}");
+                                 $":{exception.GetFullExceptionMessage()} {Environment.NewLine} {exception.StackTrace}");
         }
     }
 }

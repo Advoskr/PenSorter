@@ -74,8 +74,7 @@ namespace PenSorter.BL
                 {
                     lock (_capacityLocker)
                     {
-                        var count = penPallet.PensColorCodes.Count;
-                        CurrentCapacity -= count;
+                        CurrentCapacity -= penPallet.PensColorCodes.Count;
                     }
                     return t.Result;
                 });
@@ -84,33 +83,27 @@ namespace PenSorter.BL
 
             Logger.Info($"Total pens sorted on sorting table #{InstanceName}: {totalPens}");
             return await Task.WhenAll(tasks).ContinueWith(sortTask =>
-            {
-                //собираем корзинки сортировщиков после того, как отсортировали все карандаши и дособираем из них пачки.
-                //Здесь, для "честности" алгоритма правлиьно было бы отдать карандаши сортировщику.
-                var bucketLeftovers = new Dictionary<int,int>();
-                foreach (var sorter in Sorters)
-                {
-                    foreach (var kvp in sorter.PenColorsBuckets)
-                    {
-                        if (!bucketLeftovers.ContainsKey(kvp.Key))
-                        {
-                            bucketLeftovers[kvp.Key] = 0;
-                        }
-                        bucketLeftovers[kvp.Key] += kvp.Value;
-                    }
-                };
-                var bucketPacks = new List<PenPack>();
-                foreach (var penPair in bucketLeftovers)
-                {
-                    var fullPacks = penPair.Value / penPackSize;
-                    bucketPacks.AddRange(Enumerable.Range(0, fullPacks).Select(t => new PenPack()));
-                }
+              {
+                 //собираем корзинки сортировщиков после того, как отсортировали все карандаши и дособираем из них пачки.
+                 //Здесь, для "честности" алгоритма правлиьно было бы отдать карандаши сортировщику.
+                 var bucketPallet = new PenPallet { PensColorCodes = new List<int>() };
+                  foreach (var sorter in Sorters)
+                  {
+                      foreach (var kvp in sorter.PenColorsBuckets)
+                      {
+                         //собираем псевдо-паллету с количеством карандашей, равным остатку в корзинке сортировщика
+                         bucketPallet.PensColorCodes.AddRange(Enumerable.Range(0, kvp.Value).Select(t => kvp.Key));
+                      }
+                      sorter.PenColorsBuckets.Clear();
+                  };
 
-                var penPacks = sortTask.Result.SelectMany(t => t)
-                    .Union(bucketPacks)
-                    .ToList();
-                return penPacks;
-            });
+                  var bucketPacks = Sorters.First().Sort(bucketPallet, penPackSize).Result;
+
+                  var penPacks = sortTask.Result.SelectMany(t => t)
+                      .Union(bucketPacks)
+                      .ToList();
+                  return penPacks;
+              });
         }
     }
 }

@@ -12,6 +12,11 @@ namespace PenSorter
 {
     class Program
     {
+        private const int PALLET_MAX_SIZE = 500;
+        private const int SORTING_TABLE_CAPACITY = 2000;
+        private const int PEN_PACK_SIZE = 4;
+        private const int PEN_PACK_COST = 10;
+
         private static FileGenerator _generator= new FileGenerator();
         private static ILogger _logger;
         static void Main(string[] args)
@@ -64,10 +69,9 @@ namespace PenSorter
         private static void GenerateData(int numberOfFiles)
         {
             var rnd = new Random();
-            //TODO can be static object
             foreach (var _ in Enumerable.Range(0,numberOfFiles))
             {
-                var size = rnd.Next(1, 500);
+                var size = rnd.Next(1, PALLET_MAX_SIZE);
                 var data = _generator.GenerateDataFile(size);
                 _logger.Info($"Generated file: {data}");
             }
@@ -85,22 +89,42 @@ namespace PenSorter
             }
 
             var sw = Stopwatch.StartNew();
-            var pallets = _generator.GetPallets();
+            List<PenPallet> pallets;
+            try
+            {
+                pallets = _generator.GetPallets();
+            }
+            catch(Exception ex)
+            {
+                _logger.Error(ex);
+                return;
+            }
             _logger.Info($"Got pallets data in {sw.Elapsed.TotalMilliseconds}ms");
             sw.Restart();
-            var sortingTable = new SortingTable(sortersCount, 2000, _logger);
+            var sortingTable = new SortingTable(sortersCount, SORTING_TABLE_CAPACITY, _logger);
             _logger.Info($"Found {pallets.Count} pallets");
             _logger.Info($"Total pens: {pallets.Sum(t=>t.PensColorCodes.Count)}");
-            sortingTable.Sort(pallets, 4).ContinueWith(t=>
+            try
             {
-                _logger.Info($"Formed {t.Result.Count} packs.");
-                _logger.Info($"Total cost of packs: {t.Result.Count*10}$.");
-                return Task.CompletedTask;
-            }).ContinueWith(t =>
+                sortingTable.Sort(pallets, PEN_PACK_SIZE).ContinueWith(t =>
+                {
+                    _logger.Info($"Formed {t.Result.Count} packs.");
+                    _logger.Info($"Total cost of packs: {t.Result.Count * PEN_PACK_COST}$.");
+                    return Task.CompletedTask;
+                }).ContinueWith(t =>
+                {
+                    sw.Stop();
+                    _logger.Info($"Sorted pallets data in {sw.Elapsed.TotalMilliseconds}ms");
+                }).Wait();
+            }
+            catch(AggregateException ex)
+            {
+                _logger.Error(ex);
+            }
+            finally
             {
                 sw.Stop();
-                _logger.Info($"Sorted pallets data in {sw.Elapsed.TotalMilliseconds}ms");
-            }).Wait();
+            }
             _logger.Info($"Sorting ended");
         }
     }

@@ -186,3 +186,4 @@ MonitoringServer/.nuget/NuGet.exe
 *.sqlite
 MonitoringServerCore/.vs/
 .vs/
+*.7z
